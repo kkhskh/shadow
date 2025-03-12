@@ -202,6 +202,7 @@ static const struct file_operations shadow_proc_fops = {
     .llseek = seq_lseek,
     .release = single_release,
 };
+#endif
 
 /* Module parameters */
 static char device_name[IFNAMSIZ] = "eth0";
