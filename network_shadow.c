@@ -6,6 +6,7 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/rtnetlink.h>
+#include <linux/version.h>
 #include "../recovery_evaluator/recovery_evaluator.h"
 
 /* Shadow driver states */
@@ -51,7 +52,8 @@ static void save_device_state(struct net_device *dev)
     
     /* Careful handling of MAC address copy to avoid const issues */
     if (dev->dev_addr) {
-        memcpy(shadow->saved_state.mac_addr, dev->dev_addr, ETH_ALEN);
+        unsigned char *src = (unsigned char *)dev->dev_addr;
+        memcpy(shadow->saved_state.mac_addr, src, ETH_ALEN);
     }
     
     shadow->saved_state.mtu = dev->mtu;
@@ -80,7 +82,8 @@ static int restore_device_state(struct net_device *dev)
     
     /* Safe copy of MAC address */
     if (dev->dev_addr) {
-        memcpy(dev->dev_addr, shadow->saved_state.mac_addr, ETH_ALEN);
+        unsigned char *dst = (unsigned char *)dev->dev_addr;
+        memcpy(dst, shadow->saved_state.mac_addr, ETH_ALEN);
     }
     
     dev->flags = shadow->saved_state.flags;
@@ -217,8 +220,15 @@ static int __init network_shadow_init(void)
     shadow->netdev_notifier.notifier_call = netdev_event;
     register_netdevice_notifier(&shadow->netdev_notifier);
     
-    /* Create proc entry */
+    /* Create proc entry - use create_proc_entry for older kernels */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+    proc_entry = create_proc_entry("network_shadow", 0644, NULL);
+    if (proc_entry)
+        proc_entry->proc_fops = &shadow_proc_fops;
+#else
     proc_entry = proc_create("network_shadow", 0644, NULL, &shadow_proc_fops);
+#endif
+    
     if (!proc_entry) {
         unregister_netdevice_notifier(&shadow->netdev_notifier);
         kfree(shadow);
