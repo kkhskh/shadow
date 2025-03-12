@@ -5,6 +5,7 @@
 #include <linux/skbuff.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+#include "../recovery_evaluator/recovery_evaluator.h"
 
 /* Integrate with existing recovery evaluator */
 extern int start_test(const char *name, const char *driver);
@@ -63,7 +64,7 @@ static void save_device_state(struct net_device *dev)
     add_event(NULL, PHASE_NONE, "Saved state for device %s", dev->name);
 }
 
-/* Function to restore device state */
+
 static int restore_device_state(struct net_device *dev)
 {
     struct network_shadow *shadow = shadow_driver;
@@ -72,31 +73,77 @@ static int restore_device_state(struct net_device *dev)
     if (!dev || !shadow)
         return -EINVAL;
     
-    rtnl_lock();
+    if (!rtnl_is_locked())
+        rtnl_lock();
     
     /* Restore basic device attributes */
     dev->mtu = shadow->saved_state.mtu;
-    memcpy(dev->dev_addr, shadow->saved_state.mac_addr, ETH_ALEN);
+    if (dev->dev_addr && shadow->saved_state.mac_addr)
+        memcpy(dev->dev_addr, shadow->saved_state.mac_addr, ETH_ALEN);
     dev->flags = shadow->saved_state.flags;
     dev->tx_queue_len = shadow->saved_state.tx_queue_len;
     
     /* Restore device state */
     if (shadow->saved_state.is_up && !netif_running(dev)) {
-        ret = dev_open(dev);
+        if (dev->netdev_ops && dev->netdev_ops->ndo_open)
+            ret = dev->netdev_ops->ndo_open(dev);
         if (ret)
             add_event(NULL, PHASE_RECOVERY_FAILED, 
                      "Failed to restore device %s state", dev->name);
     } else if (!shadow->saved_state.is_up && netif_running(dev)) {
-        dev_close(dev);
+        if (dev->netdev_ops && dev->netdev_ops->ndo_stop)
+            dev->netdev_ops->ndo_stop(dev);
     }
     
-    rtnl_unlock();
+    if (rtnl_is_locked())
+        rtnl_unlock();
     
     add_event(NULL, PHASE_RECOVERY_COMPLETE, 
              "Restored state for device %s", dev->name);
     
     return ret;
 }
+
+/* Function to restore device state */
+// static int restore_device_state(struct net_device *dev)
+// {
+//     struct network_shadow *shadow = shadow_driver;
+//     int ret = 0;
+    
+//     if (!dev || !shadow)
+//         return -EINVAL;
+    
+//     // rtnl_lock();
+//     /* Use */
+//     if (!rtnl_is_locked())
+//         rtnl_lock();
+
+//     /* Restore basic device attributes */
+//     dev->mtu = shadow->saved_state.mtu;
+//     // memcpy(dev->dev_addr, shadow->saved_state.mac_addr, ETH_ALEN);
+//     if (dev->dev_addr && shadow->saved_state.mac_addr)
+//         memcpy(dev->dev_addr, shadow->saved_state.mac_addr, ETH_ALEN);
+//     dev->flags = shadow->saved_state.flags;
+//     dev->tx_queue_len = shadow->saved_state.tx_queue_len;
+    
+//     /* Restore device state */
+//     if (shadow->saved_state.is_up && !netif_running(dev)) {
+//         // ret = dev_open(dev);
+//         ret = dev->netdev_ops->ndo_open(dev);
+//         if (ret)
+//             add_event(NULL, PHASE_RECOVERY_FAILED, 
+//                      "Failed to restore device %s state", dev->name);
+//     } else if (!shadow->saved_state.is_up && netif_running(dev)) {
+//         dev_close(dev);
+//     }
+    
+//     rtnl_unlock();
+    
+//     add_event(NULL, PHASE_RECOVERY_COMPLETE, 
+//              "Restored state for device %s", dev->name);
+    
+//     return ret;
+// }
 
 /* Network device notifier callback */
 static int netdev_event(struct notifier_block *this, unsigned long event, void *ptr)
