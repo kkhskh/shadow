@@ -62,7 +62,9 @@ static void save_device_state(struct net_device *dev)
     shadow->saved_state.features = dev->features;
     shadow->saved_state.tx_queue_len = dev->tx_queue_len;
     
-    add_event(NULL, PHASE_NONE, "Saved state for device %s", dev->name);
+    printk(KERN_INFO "Shadow driver: Saved state for device %s\n", dev->name);
+    /* Comment out add_event until recovery_evaluator is implemented */
+    // add_event(NULL, PHASE_NONE, "Saved state for device %s", dev->name);
 }
 
 /* Function to restore device state */
@@ -94,8 +96,8 @@ static int restore_device_state(struct net_device *dev)
         if (dev->netdev_ops && dev->netdev_ops->ndo_open)
             ret = dev->netdev_ops->ndo_open(dev);
         if (ret)
-            add_event(NULL, PHASE_RECOVERY_FAILED, 
-                     "Failed to restore device %s state", dev->name);
+            printk(KERN_ERR "Shadow driver: Failed to restore device %s state\n", dev->name);
+            // add_event(NULL, PHASE_RECOVERY_FAILED, "Failed to restore device %s state", dev->name);
     } else if (!shadow->saved_state.is_up && netif_running(dev)) {
         if (dev->netdev_ops && dev->netdev_ops->ndo_stop)
             dev->netdev_ops->ndo_stop(dev);
@@ -104,8 +106,8 @@ static int restore_device_state(struct net_device *dev)
     if (rtnl_is_locked())
         rtnl_unlock();
     
-    add_event(NULL, PHASE_RECOVERY_COMPLETE, 
-             "Restored state for device %s", dev->name);
+    printk(KERN_INFO "Shadow driver: Restored state for device %s\n", dev->name);
+    // add_event(NULL, PHASE_RECOVERY_COMPLETE, "Restored state for device %s", dev->name);
     
     return ret;
 }
@@ -124,9 +126,9 @@ static int netdev_event(struct notifier_block *this, unsigned long event, void *
         if (!shadow->dev && strcmp(dev->name, shadow->device_name) == 0) {
             shadow->dev = dev;
             shadow->state = SHADOW_PASSIVE;
-            start_test("network_shadow", dev->name);
-            add_event(NULL, PHASE_NONE, 
-                     "Started monitoring device %s", dev->name);
+            printk(KERN_INFO "Shadow driver: Started monitoring device %s\n", dev->name);
+            // start_test("network_shadow", dev->name);
+            // add_event(NULL, PHASE_NONE, "Started monitoring device %s", dev->name);
             save_device_state(dev);
         }
         break;
@@ -136,12 +138,12 @@ static int netdev_event(struct notifier_block *this, unsigned long event, void *
             if (!shadow->recovery_in_progress) {
                 shadow->state = SHADOW_ACTIVE;
                 shadow->recovery_in_progress = true;
-                add_event(NULL, PHASE_FAILURE_DETECTED, 
-                         "Device %s unregistered unexpectedly", dev->name);
+                printk(KERN_INFO "Shadow driver: Device %s unregistered unexpectedly\n", dev->name);
+                // add_event(NULL, PHASE_FAILURE_DETECTED, "Device %s unregistered unexpectedly", dev->name);
                 
                 /* We'd normally start a timer here for recovery */
                 printk(KERN_INFO "Shadow driver active: device %s failed\n", dev->name);
-                add_event(NULL, PHASE_DRIVER_STOPPED, "Recovery would be started here");
+                // add_event(NULL, PHASE_DRIVER_STOPPED, "Recovery would be started here");
             }
             shadow->dev = NULL;
         }
