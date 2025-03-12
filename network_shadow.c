@@ -6,7 +6,6 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/rtnetlink.h>
-#include <linux/version.h>
 #include "../recovery_evaluator/recovery_evaluator.h"
 
 /* Shadow driver states */
@@ -220,11 +219,9 @@ static int __init network_shadow_init(void)
     shadow->netdev_notifier.notifier_call = netdev_event;
     register_netdevice_notifier(&shadow->netdev_notifier);
     
-    /* Create proc entry - use fully compatible method for older kernels */
-    proc_entry = create_proc_entry("network_shadow", 0644, NULL);
-    if (proc_entry) {
-        proc_entry->proc_fops = &shadow_proc_fops;
-    } else {
+    /* Create proc entry using proc_create directly */
+    proc_entry = proc_create("network_shadow", 0644, NULL, &shadow_proc_fops);
+    if (!proc_entry) {
         unregister_netdevice_notifier(&shadow->netdev_notifier);
         kfree(shadow);
         return -ENOMEM;
