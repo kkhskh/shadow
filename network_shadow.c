@@ -43,7 +43,6 @@ static struct network_shadow *shadow_driver;
 static void save_device_state(struct net_device *dev)
 {
     struct network_shadow *shadow = shadow_driver;
-    unsigned char *dst, *src;
     
     if (!dev || !shadow)
         return;
@@ -52,9 +51,7 @@ static void save_device_state(struct net_device *dev)
     
     /* Careful handling of MAC address copy to avoid const issues */
     if (dev->dev_addr) {
-        dst = shadow->saved_state.mac_addr;
-        src = dev->dev_addr;
-        memcpy(dst, src, ETH_ALEN);
+        memcpy(shadow->saved_state.mac_addr, dev->dev_addr, ETH_ALEN);
     }
     
     shadow->saved_state.mtu = dev->mtu;
@@ -70,7 +67,6 @@ static void save_device_state(struct net_device *dev)
 static int restore_device_state(struct net_device *dev)
 {
     struct network_shadow *shadow = shadow_driver;
-    unsigned char *dst, *src;
     int ret = 0;
     
     if (!dev || !shadow)
@@ -84,9 +80,7 @@ static int restore_device_state(struct net_device *dev)
     
     /* Safe copy of MAC address */
     if (dev->dev_addr) {
-        dst = dev->dev_addr;
-        src = shadow->saved_state.mac_addr;
-        memcpy(dst, src, ETH_ALEN);
+        memcpy(dev->dev_addr, shadow->saved_state.mac_addr, ETH_ALEN);
     }
     
     dev->flags = shadow->saved_state.flags;
@@ -244,6 +238,7 @@ static void __exit network_shadow_exit(void)
         unregister_netdevice_notifier(&shadow_driver->netdev_notifier);
         remove_proc_entry("network_shadow", NULL);
         kfree(shadow_driver);
+        shadow_driver = NULL;
     }
     
     printk(KERN_INFO "Network Shadow Driver unloaded\n");
