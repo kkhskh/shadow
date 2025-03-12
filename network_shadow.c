@@ -6,6 +6,7 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/rtnetlink.h>
+#include <linux/version.h>
 #include "../recovery_evaluator/recovery_evaluator.h"
 
 /* Shadow driver states */
@@ -185,6 +186,15 @@ static int shadow_proc_open(struct inode *inode, struct file *file)
     return single_open(file, shadow_proc_show, NULL);
 }
 
+/* Use proc_ops structure for newer kernels, file_operations for older kernels */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+static const struct proc_ops shadow_proc_ops = {
+    .proc_open = shadow_proc_open,
+    .proc_read = seq_read,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release,
+};
+#else
 static const struct file_operations shadow_proc_fops = {
     .owner = THIS_MODULE,
     .open = shadow_proc_open,
@@ -219,8 +229,12 @@ static int __init network_shadow_init(void)
     shadow->netdev_notifier.notifier_call = netdev_event;
     register_netdevice_notifier(&shadow->netdev_notifier);
     
-    /* Create proc entry using proc_create directly */
+    /* Create proc entry using the appropriate structure type */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+    proc_entry = proc_create("network_shadow", 0644, NULL, &shadow_proc_ops);
+#else
     proc_entry = proc_create("network_shadow", 0644, NULL, &shadow_proc_fops);
+#endif
     if (!proc_entry) {
         unregister_netdevice_notifier(&shadow->netdev_notifier);
         kfree(shadow);
