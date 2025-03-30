@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Shadow Driver Recovery Results</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 800px;
+            max-width: 90vw;
+        }
+        svg {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <h1 style="text-align: center; color: #333;">Shadow Driver Recovery Results</h1>
+        
+        <svg width="800" height="500" viewBox="0 0 800 500">
+            <!-- Main Background -->
+            <rect width="100%" height="100%" fill="#ffffff"/>
+
+            <!-- Network Test Results Panel -->
+            <g transform="translate(50, 50)">
+                <rect width="340" height="180" rx="10" 
+                      fill="#e6f2ff" stroke="#0066cc" stroke-width="2"/>
+                <text x="170" y="30" font-size="16" 
+                      text-anchor="middle" font-weight="bold">Network Test Results</text>
+                
+                <!-- Network Performance Line -->
+                <path d="M20,90 L320,90" stroke="#ddd" stroke-width="1"/>
+                <path d="M20,130 L320,130" stroke="#ddd" stroke-width="1"/>
+                <path class="data-line" 
+                      d="M20,110 C70,110 120,70 170,110 S270,150 320,110" 
+                      stroke="#0066cc" stroke-width="2" fill="none"/>
+                
+                <!-- Axes -->
+                <line x1="20" y1="150" x2="320" y2="150" stroke="#000" stroke-width="1"/>
+                <line x1="20" y1="50" x2="20" y2="150" stroke="#000" stroke-width="1"/>
+                
+                <!-- Labels -->
+                <text x="170" y="170" text-anchor="middle" font-size="12">Time</text>
+                <text x="10" y="100" text-anchor="middle" 
+                      transform="rotate(-90, 10, 100)">Response Time</text>
+            </g>
+
+            <!-- Recovery Statistics Panel -->
+            <g transform="translate(410, 50)">
+                <rect width="340" height="180" rx="10" 
+                      fill="#e1d5e7" stroke="#9673a6" stroke-width="2"/>
+                <text x="170" y="30" font-size="16" 
+                      text-anchor="middle" font-weight="bold">Recovery Statistics</text>
+                
+                <!-- Stats Content -->
+                <text x="20" y="70" font-size="14">Success Rate: 98%</text>
+                <text x="20" y="100" font-size="14">Avg Recovery Time: 1.2s</text>
+                <text x="20" y="130" font-size="14">Total Tests: 1000</text>
+            </g>
+
+            <!-- Fault Injection Results Panel -->
+            <g transform="translate(50, 250)">
+                <rect width="700" height="200" rx="10" 
+                      fill="#fff2cc" stroke="#d6b656" stroke-width="2"/>
+                <text x="350" y="30" font-size="16" 
+                      text-anchor="middle" font-weight="bold">Fault Injection Results</text>
+                
+                <!-- Bar Chart -->
+                <g transform="translate(50, 50)">
+                    <!-- Bars -->
+                    <rect x="0" y="0" width="40" height="100" fill="#ffd700"/>
+                    <rect x="60" y="20" width="40" height="80" fill="#ffd700"/>
+                    <rect x="120" y="40" width="40" height="60" fill="#ffd700"/>
+                    
+                    <!-- Labels -->
+                    <text x="20" y="120" text-anchor="middle" font-size="12">Test 1</text>
+                    <text x="80" y="120" text-anchor="middle" font-size="12">Test 2</text>
+                    <text x="140" y="120" text-anchor="middle" font-size="12">Test 3</text>
+                </g>
+            </g>
+        </svg>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Add hover effects to data lines
+                const dataLines = document.querySelectorAll('.data-line');
+                dataLines.forEach(line => {
+                    line.addEventListener('mouseover', function() {
+                        this.style.strokeWidth = '4';
+                        this.style.cursor = 'pointer';
+                    });
+                    line.addEventListener('mouseout', function() {
+                        this.style.strokeWidth = '2';
+                    });
+                });
+
+                // Add hover effects to bars
+                const bars = document.querySelectorAll('rect[fill="#ffd700"]');
+                bars.forEach(bar => {
+                    bar.addEventListener('mouseover', function() {
+                        this.style.fill = '#ffc700';
+                        this.style.cursor = 'pointer';
+                    });
+                    bar.addEventListener('mouseout', function() {
+                        this.style.fill = '#ffd700';
+                    });
+                });
+            } catch (error) {
+                console.error('Error in JavaScript:', error);
+            }
+        });
+    </script>
+</body>
+</html>
