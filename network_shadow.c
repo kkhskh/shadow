@@ -189,11 +189,17 @@ static int restore_device_state(struct net_device *dev)
     /* Restore debug message level */
     dev->msg_enable = shadow->saved_state.msg_enable;
     
-    /* Restore ethtool settings if available */
-    if (dev->ethtool_ops && dev->ethtool_ops->set_settings) {
-        dev->ethtool_ops->set_settings(dev, &shadow->saved_state.ecmd);
-    }
-    
+    /* Save ethtool settings */
+    #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+        /* Modern kernels use ethtool_ops->get/set_link_ksettings */
+        printk(KERN_INFO "Shadow driver: Note - ethtool settings require using newer KSETTINGS API\n");
+    #else
+        if (dev->ethtool_ops && dev->ethtool_ops->get_settings) {
+            memset(&shadow->saved_state.ecmd, 0, sizeof(struct ethtool_cmd));
+            shadow->saved_state.ecmd.cmd = ETHTOOL_GSET;
+            dev->ethtool_ops->get_settings(dev, &shadow->saved_state.ecmd);
+        }
+    #endif
     /* Restore multicast list would go here */
     if (shadow->saved_state.multicast_list_saved) {
         /* In a real implementation, you'd restore the multicast list here */
@@ -353,7 +359,7 @@ static int shadow_ndo_set_mac_address(struct net_device *dev, void *addr) {
         if (dev->addr_assign_type & NET_ADDR_RANDOM)
             dev->addr_assign_type &= ~NET_ADDR_RANDOM;
             
-        memcpy(dev->dev_addr, addr, ETH_ALEN);
+        memcpy((void *)dev->dev_addr, addr, ETH_ALEN);
         ret = 0;
     }
     
