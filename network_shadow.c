@@ -8,9 +8,40 @@
 #include <linux/rtnetlink.h>
 #include <linux/version.h>
 #include <linux/kallsyms.h>
+#include <linux/kprobes.h>  /* Add this new include */
 #include "../recovery_evaluator/recovery_evaluator.h"
 #include <linux/ethtool.h>
 
+/* Add the kprobe-based kallsyms_lookup_name solution here */
+static unsigned long lookup_name(const char *name)
+{
+    struct kprobe kp = {
+        .symbol_name = name
+    };
+    unsigned long addr;
+    
+    if (register_kprobe(&kp) < 0)
+        return 0;
+        
+    addr = (unsigned long)kp.addr;
+    unregister_kprobe(&kp);
+    
+    return addr;
+}
+
+static unsigned long (*kallsyms_lookup_name_func)(const char *name);
+
+static int init_kallsyms_lookup(void)
+{
+    /* First check if kallsyms_lookup_name is still directly available */
+    kallsyms_lookup_name_func = (void*)lookup_name("kallsyms_lookup_name");
+    if (!kallsyms_lookup_name_func) {
+        printk(KERN_ERR "Shadow driver: Could not find kallsyms_lookup_name\n");
+        return -EINVAL;
+    }
+    
+    return 0;
+}
 
 /* Function Tapping Infrastructure */
 struct function_tap {
@@ -32,7 +63,7 @@ static int register_tap(const char *func_name, void *replacement) {
     if (num_taps >= MAX_TAPS)
         return -ENOSPC;
     
-    addr = kallsyms_lookup_name(func_name);
+    addr = kallsyms_lookup_name_func(func_name);
     if (!addr) {
         printk(KERN_WARNING "Shadow driver: Could not find symbol %s\n", func_name);
         return -EINVAL;
@@ -544,6 +575,14 @@ static int __init network_shadow_init(void)
 {
     struct network_shadow *shadow;
     struct proc_dir_entry *proc_entry;
+    int ret;
+    
+    /* Initialize the kallsyms lookup function */
+    ret = init_kallsyms_lookup();
+    if (ret < 0) {
+        printk(KERN_ERR "Shadow driver: Failed to initialize kallsyms lookup\n");
+        return ret;
+    }
     
     /* Allocate shadow driver structure */
     shadow = kzalloc(sizeof(*shadow), GFP_KERNEL);
