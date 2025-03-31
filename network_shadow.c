@@ -103,6 +103,7 @@ static netdev_tx_t shadow_ndo_start_xmit(struct sk_buff *skb, struct net_device 
 static int shadow_ndo_set_mac_address(struct net_device *dev, void *addr);
 static int shadow_ndo_change_mtu(struct net_device *dev, int new_mtu);
 
+
 /* Function to save device state */
 static void save_device_state(struct net_device *dev)
 {
@@ -132,15 +133,11 @@ static void save_device_state(struct net_device *dev)
             memcpy(&shadow->saved_state.stats, stats, sizeof(struct net_device_stats));
     }
     
-    /* Save ethtool settings */
-    if (dev->ethtool_ops && dev->ethtool_ops->get_settings) {
-        memset(&shadow->saved_state.ecmd, 0, sizeof(struct ethtool_cmd));
-        shadow->saved_state.ecmd.cmd = ETHTOOL_GSET;
-        dev->ethtool_ops->get_settings(dev, &shadow->saved_state.ecmd);
-    }
+    /* Save ethtool settings - skip for newer kernels that use different API */
+    printk(KERN_INFO "Shadow driver: Ethtool settings save skipped - kernel API changed\n");
     
-    /* Save debug message level */
-    shadow->saved_state.msg_enable = dev->msg_enable;
+    /* Save debug message level - not directly accessible in newer kernels */
+    shadow->saved_state.msg_enable = 0; /* Use a safe default */
     
     /* Save permanent MAC address if available */
     if (dev->perm_addr) {
@@ -162,6 +159,7 @@ static void save_device_state(struct net_device *dev)
 }
 
 
+/* Function to restore device state */
 /* Function to restore device state */
 static int restore_device_state(struct net_device *dev)
 {
@@ -186,20 +184,11 @@ static int restore_device_state(struct net_device *dev)
     dev->flags = shadow->saved_state.flags;
     dev->tx_queue_len = shadow->saved_state.tx_queue_len;
     
-    /* Restore debug message level */
-    dev->msg_enable = shadow->saved_state.msg_enable;
+    /* Restore ethtool settings - skip for newer kernels */
+    printk(KERN_INFO "Shadow driver: Ethtool settings restore skipped - kernel API changed\n");
     
-    /* Save ethtool settings */
-    #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
-        /* Modern kernels use ethtool_ops->get/set_link_ksettings */
-        printk(KERN_INFO "Shadow driver: Note - ethtool settings require using newer KSETTINGS API\n");
-    #else
-        if (dev->ethtool_ops && dev->ethtool_ops->get_settings) {
-            memset(&shadow->saved_state.ecmd, 0, sizeof(struct ethtool_cmd));
-            shadow->saved_state.ecmd.cmd = ETHTOOL_GSET;
-            dev->ethtool_ops->get_settings(dev, &shadow->saved_state.ecmd);
-        }
-    #endif
+    /* Debug message level restoration skipped - not directly accessible */
+    
     /* Restore multicast list would go here */
     if (shadow->saved_state.multicast_list_saved) {
         /* In a real implementation, you'd restore the multicast list here */
